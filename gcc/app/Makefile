@@ -31,16 +31,24 @@ SPEED = 19200
 VERIFY = -v
 
 # Locations of tools
-CXX = 		../tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-g++
-CC = 		../tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-gcc
+# TOOLCHAIN_PATH may be overridden from the environment or the command line, e.g.
+#   make TOOLCHAIN_PATH=$HOME/nw2s-toolchains/gcc-arm-none-eabi-4.8.3-2014q1/bin compile
+# Set TOOLCHAIN_PREFIX=arm-none-eabi- instead to use a toolchain already on PATH.
+# CC/CXX/AR/OBJCOPY can still be overridden individually on the command line.
+-include Makefile.local
+TOOLCHAIN_PATH ?= ../tools/gcc-arm-none-eabi-4.8.3-2014q1/bin
+TOOLCHAIN_PREFIX ?= $(TOOLCHAIN_PATH)/arm-none-eabi-
+
+CXX = 		$(TOOLCHAIN_PREFIX)g++
+CC = 		$(TOOLCHAIN_PREFIX)gcc
 C = 		$(CC)
 SAM = 		../arduino/sam
 CMSIS = 	../arduino/sam/system/CMSIS
 LIBSAM = 	../arduino/sam/system/libsam
 TMPDIR = 	./build
 BINDIR =	./bin
-AR = 		../tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-ar 
-OBJCOPY =  	../tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-objcopy
+AR = 		$(TOOLCHAIN_PREFIX)ar
+OBJCOPY =  	$(TOOLCHAIN_PREFIX)objcopy
 
 
 
