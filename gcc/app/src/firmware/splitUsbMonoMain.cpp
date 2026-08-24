@@ -20,7 +20,7 @@
 
 #include <Usb.h>
 #include <EventManager.h>
-#include <USBMidi.h>
+#include <UsbMidi.h>
 
 using namespace nw2s;
 

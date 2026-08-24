@@ -37,7 +37,7 @@
 #include <usbhost/Usb.h>
 #include "EventManager.h"
 #include "confdescparser.h"
-#include "aJSON/aJson.h"
+#include "aJSON/aJSON.h"
 
 //define MAX_ENDPOINTS 3
 

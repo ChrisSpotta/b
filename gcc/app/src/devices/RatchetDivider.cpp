@@ -20,7 +20,7 @@
 
 #include "RatchetDivider.h"
 #include "IO.h"
-#include <aJSON/aJson.h>
+#include <aJSON/aJSON.h>
 #include "JSONUtil.h"
 #include "Entropy.h"
 

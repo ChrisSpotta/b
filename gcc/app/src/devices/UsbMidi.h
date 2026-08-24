@@ -32,7 +32,7 @@
 #include "Usb.h"
 #include "EventManager.h"
 #include "confdescparser.h"
-#include "aJSON/aJson.h"
+#include "aJSON/aJSON.h"
 #include "IO.h"
 #include "Gate.h"
 #include "Clock.h"

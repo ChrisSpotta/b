@@ -30,7 +30,7 @@
 #include "b.h"
 #include "Arc.h"
 #include "EventManager.h"
-#include "aJSON/aJson.h"
+#include "aJSON/aJSON.h"
 #include "IO.h"
 #include "Clock.h"
 #include "Gate.h"

@@ -21,7 +21,7 @@
 
 #include "Trigger.h"
 #include "IO.h"
-#include <aJSON/aJson.h>
+#include <aJSON/aJSON.h>
 #include "JSONUtil.h"
 
 using namespace nw2s;

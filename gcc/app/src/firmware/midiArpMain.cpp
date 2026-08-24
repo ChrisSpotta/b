@@ -21,7 +21,7 @@
 
 #include <EventManager.h>
 #include <Clock.h>
-#include <USBMidi.h>
+#include <UsbMidi.h>
 
 using namespace nw2s;
 

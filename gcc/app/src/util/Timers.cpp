@@ -19,7 +19,7 @@
 */
 
 #include <Arduino.h>
-#include "Audiodevice.h"
+#include "AudioDevice.h"
 
 void TC4_Handler()
 {

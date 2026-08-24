@@ -30,7 +30,7 @@
 #include "Usb.h"
 #include "EventManager.h"
 #include "confdescparser.h"
-#include "aJSON/aJson.h"
+#include "aJSON/aJSON.h"
 #include "Grid.h"
 
 #define bmREQ_FTDI_OUT  0x40

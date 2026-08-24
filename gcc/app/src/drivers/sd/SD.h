@@ -17,8 +17,8 @@
 
 #include <Arduino.h>
 
-#include <sd/utility/SDFat.h>
-#include <sd/utility/SDFatUtil.h>
+#include <sd/utility/SdFat.h>
+#include <sd/utility/SdFatUtil.h>
 
 #define FILE_READ O_READ
 #define FILE_WRITE (O_READ | O_WRITE | O_CREAT)

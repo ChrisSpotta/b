@@ -23,7 +23,7 @@
 
 #include "IO.h"
 #include "Clock.h"
-#include <aJSON/aJson.h>
+#include <aJSON/aJSON.h>
 #include "Gate.h"
 
 namespace nw2s

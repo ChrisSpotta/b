@@ -37,7 +37,7 @@
 #include "Usb.h"
 #include "EventManager.h"
 #include "confdescparser.h"
-#include "aJSON/aJson.h"
+#include "aJSON/aJSON.h"
 
 //define MAX_ENDPOINTS 3
 #define EP_MAXPKTSIZE           64 // max size for data via USB
