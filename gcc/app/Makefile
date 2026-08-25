@@ -163,11 +163,15 @@ $(foreach src,$(SRCFILES), $(eval $(call OBJ_template,$(src),$(addsuffix .o,$(ad
 
 clean:
 	test ! -d $(TMPDIR) || rm -rf $(TMPDIR)
+	test ! -d $(BINDIR) || rm -rf $(BINDIR)
 
 .PHONY: upload default
 
 $(TMPDIR):
 	mkdir -p $(TMPDIR)
+
+$(BINDIR):
+	mkdir -p $(BINDIR)
 
 $(TMPDIR)/core:
 	mkdir -p $(TMPDIR)/core
@@ -212,7 +216,7 @@ $(TMPDIR)/$(PROJNAME).elf: $(TMPDIR)/core.a $(TMPDIR)/core/syscalls_sam3.c.o $(O
 	$(CXX) -Os -Wl,--gc-sections -mcpu=cortex-m3 -T$(SAM)/variants/arduino_due_x/linker_scripts/gcc/flash.ld -Wl,-Map,$(TMPDIR)/$(PROJNAME).map -o $@ -L$(TMPDIR) -lm -lgcc -mthumb -Wl,--cref -Wl,--check-sections -Wl,--gc-sections -Wl,--entry=Reset_Handler -Wl,--unresolved-symbols=report-all -Wl,--warn-common -Wl,--warn-section-align -Wl,--warn-unresolved-symbols -Wl,--start-group $(TMPDIR)/core/syscalls_sam3.c.o $(OBJFILES) $(SAM)/variants/arduino_due_x/libsam_sam3x8e_gcc_rel.a $(TMPDIR)/core.a -Wl,--end-group
 
 #copy from the hex to our bin file (why?)
-$(BINDIR)/$(PROJNAME).bin: $(TMPDIR)/$(PROJNAME).elf 
+$(BINDIR)/$(PROJNAME).bin: $(TMPDIR)/$(PROJNAME).elf | $(BINDIR)
 	$(OBJCOPY) -O binary $< $@
 
 #upload to the arduino by first resetting it (stty) and the running bossac
