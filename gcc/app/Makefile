@@ -61,7 +61,7 @@ INCLUDES = 	-Isrc -Isrc/devices -Isrc/util -Isrc/drivers -I$(LIBSAM) -I$(CMSIS)/
 			-Isrc/drivers/usbhost -Isrc/libraries
 
 # Compilation flags common to both c and c++
-COMMON_FLAGS = -g -Os -w -ffunction-sections -fdata-sections -nostdlib --param max-inline-insns-single=500 -mcpu=cortex-m3  -mthumb
+COMMON_FLAGS = -g -Os -w -ffunction-sections -fdata-sections --param max-inline-insns-single=500 -mcpu=cortex-m3  -mthumb
 
 CFLAGS = $(COMMON_FLAGS) -std=gnu90
 CXXFLAGS = $(COMMON_FLAGS) -std=gnu++98 -fno-rtti -fno-exceptions
