@@ -25,6 +25,7 @@
 #include "IO.h"
 #include "aJSON/aJSON.h"
 
+#include "../util/ArduinoSTLCompat.h"
 #include <iterator>
 #include <vector>
 

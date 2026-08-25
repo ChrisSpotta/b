@@ -21,6 +21,7 @@
 #ifndef Keys_h
 #define Keys_h
 
+#include "ArduinoSTLCompat.h"
 #include <iterator>
 #include <vector>
 #include <stdint.h>

@@ -21,6 +21,7 @@
 #ifndef EventManager_h
 #define EventManager_h
 
+#include "ArduinoSTLCompat.h"
 #include <iterator>
 #include <vector>
 #include <usbhost/Usb.h>

@@ -18,6 +18,7 @@
 
 */
 
+#include "ArduinoSTLCompat.h"
 #include <iterator>
 #include <vector>
 #include <stdexcept>

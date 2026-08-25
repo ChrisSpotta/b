@@ -20,6 +20,7 @@
 
 #include "Key.h"
 #include "IO.h"
+#include "../util/ArduinoSTLCompat.h"
 #include <iterator>
 #include <vector>
 #include "EventManager.h"

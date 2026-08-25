@@ -52,6 +52,7 @@
 #ifndef MIDIPAL_NOTE_STACK_H_
 #define MIDIPAL_NOTE_STACK_H_
 
+#include "ArduinoSTLCompat.h"
 #include <list>
 #include <stdint.h>
 
