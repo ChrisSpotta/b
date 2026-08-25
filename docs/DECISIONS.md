@@ -91,3 +91,11 @@ Reference SHA-256:
 **Decision:** GCC 6.3.1 passed the first compiler-modernisation static acceptance gate. Further compiler upgrades are paused until GCC 6 has been validated on the actual nw2s::b hardware.
 
 **Reason:** Acceptance was based on successful complete build/link, preserved legacy binary identity with GCC 4.8.3 after compatibility changes, startup/HAL verification, linker-map/runtime inspection, symbol accounting and reasonable memory usage. Binary identity between GCC 4.8.3 and GCC 6 is not required.
+
+## 2026-08-25 — Retain vendored SdFat packed FAT/MBR parsing code unchanged
+
+**Decision:** Retain the existing vendored SdFat packed FAT/MBR parsing code unchanged for the current SAM3X8E target.
+
+**Reason:** Targeted comparison showed identical structure layouts and materially equivalent packed-member access code under GCC 4.8.3 and GCC 6.3.1. The reachable unaligned accesses rely on ARMv7-M behaviour supported by the Cortex-M3 target, and no compiler migration defect was found.
+
+**Consequence:** Do not rewrite these structures merely as compiler-modernisation cleanup. Revisit only if moving to a target/alignment model where those assumptions no longer hold, and treat that as a separately tested change.
