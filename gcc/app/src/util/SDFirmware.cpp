@@ -113,7 +113,7 @@ aJsonObject* nw2s::openProgram(char* filename)
 	char programData[fileSize + 1];
 
 	programFile.read(programData, fileSize);
-	programData[fileSize] == '\0';
+	programData[fileSize] = '\0';
 		
 	aJsonObject* program = aJson.parse(programData);
 

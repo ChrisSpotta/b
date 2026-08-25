@@ -126,7 +126,7 @@ void b::configure()
 	char configData[fileSize + 1];
 
 	configFile.read(configData, fileSize);
-	configData[fileSize] == '\0';
+	configData[fileSize] = '\0';
 		
 	aJsonObject* config = aJson.parse(configData);
 
