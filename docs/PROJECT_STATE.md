@@ -63,7 +63,7 @@ Version:
 
 `arm-none-eabi-gcc 6.3.1 20170620 (GNU Tools for ARM Embedded Processors 6-2017-q2-update)`
 
-The GCC 6 toolchain has been installed and its executable verified, but it has not yet been used to build this repository at the time of this checkpoint.
+The GCC 6.3.1 toolchain has successfully built and linked the complete firmware and has passed the documented static acceptance checks. Hardware validation has not yet been performed.
 
 ## Current build configuration
 
