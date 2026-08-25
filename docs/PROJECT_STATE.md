@@ -115,10 +115,10 @@ Linker maps are generated as:
 - The duplicated `-Isrc/drivers/usbhost` include path has been removed from `INCLUDES`. GCC 4.8.3 still reproduces its exact reference firmware hash, and GCC 6.3.1 still reproduces its exact accepted firmware hash and section sizes, so the cleanup is behaviour-neutral.
 - `-nostdlib` was confirmed to reach only `-c` compile commands and never the ELF link command, so it was removed from `COMMON_FLAGS` as an inert linker-only option. GCC 4.8.3 still reproduces its exact reference firmware hash, and GCC 6.3.1 still reproduces its accepted firmware hash and section sizes, so the cleanup is behaviour-neutral.
 - The vendored SdFat packed FAT/MBR structures were reviewed under both GCC 4.8.3 and GCC 6.3.1. Structure sizes/offsets and representative generated access code were equivalent between the two compilers, and the reachable unaligned accesses in `SdVolume::init()` are supported by the Cortex-M3 target's normal unaligned-access behaviour. No source change is required.
+- The stale `nodefaultlibs` explanation in `cxxabi-compat.cpp` was corrected to describe what the function actually does. The change is comment-only; GCC 4.8.3 and GCC 6.3.1 still reproduce their exact accepted firmware hashes and GCC 6 section sizes.
 
 ## Known later issues — not current work
 
 These are recorded so they are not repeatedly rediscovered, but they should not be mixed into the GCC 6 experiment:
 
-- `cxxabi-compat.cpp` contains an old comment about `nodefaultlibs` that no longer matches the actual link command.
 - The bundled prebuilt `libsam_sam3x8e_gcc_rel.a` contains GCC 4.5.2 object code, including the SAM startup/vector-table object; leave it untouched for the first compiler experiment.
