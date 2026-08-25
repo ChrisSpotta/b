@@ -58,7 +58,7 @@ DEFINES:=-Dprintf=iprintf -DF_CPU=84000000L -DARDUINO=152 -D__SAM3X8E__ -DUSB_PI
 # Includes
 INCLUDES = 	-Isrc -Isrc/devices -Isrc/util -Isrc/drivers -I$(LIBSAM) -I$(CMSIS)/CMSIS/Include/ -I$(CMSIS)/Device/ATMEL/ \
 			-I$(SAM)/cores/arduino -I$(SAM)/variants/arduino_due_x -I$(SAM)/libraries/SPI -I$(SAM)/libraries/Wire \
-			-Isrc/drivers/usbhost -Isrc/drivers/usbhost -Isrc/libraries 
+			-Isrc/drivers/usbhost -Isrc/libraries
 
 # Compilation flags common to both c and c++
 COMMON_FLAGS = -g -Os -w -ffunction-sections -fdata-sections -nostdlib --param max-inline-insns-single=500 -mcpu=cortex-m3  -mthumb
