@@ -99,3 +99,13 @@ Reference SHA-256:
 **Reason:** Targeted comparison showed identical structure layouts and materially equivalent packed-member access code under GCC 4.8.3 and GCC 6.3.1. The reachable unaligned accesses rely on ARMv7-M behaviour supported by the Cortex-M3 target, and no compiler migration defect was found.
 
 **Consequence:** Do not rewrite these structures merely as compiler-modernisation cleanup. Revisit only if moving to a target/alignment model where those assumptions no longer hold, and treat that as a separately tested change.
+
+## 2026-08-25 — Accept GCC 6.3.1 after hardware validation
+
+**Decision:** Accept GCC 6.3.1 as the validated newer-compiler baseline for continuing nw2s::b modernisation. Keep GCC 4.8.3 as the exact-hash regression reference, and do not advance to another compiler merely because GCC 6 validation is complete.
+
+**Evidence:** The exact GCC 6 firmware image with SHA-256 `9a49756c2f647ef84db63e82f6a73de0ba09bf13dd4a749a6341de3ffb56c4e8` was flashed through the Arduino Due Programming Port using Arduino BOSSA 1.6.1. BOSSA wrote and verified 200740 bytes successfully. The firmware then booted normally, produced clean 19200-baud serial output, parsed the SD configuration and default program, initialised the IO and LED driver, reached the loader, ran `PROG00` as before, ran the test programs including audio/SD-based programs, and passed a complete power-off/cold-boot retest.
+
+**Reason:** The newer compiler has now passed both the static acceptance gate and real-hardware behavioural validation without requiring a SAM core or `libsam` change.
+
+**Consequence:** GCC 6 may be used for the next modernisation work. The Makefile/toolchain default should not be changed as part of this decision; making GCC 6 the normal/default build remains a separate, testable change. Rebuilding or replacing the old prebuilt `libsam` also remains separate work rather than an automatic next step.
