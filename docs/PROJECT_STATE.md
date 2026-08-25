@@ -47,7 +47,7 @@ Known ordinary Linux GCC 4.8.3 runtime build SHA-256:
 
 `a4508c45e6960ae8db061a0732c3eaa8558ea32a200f55493a690f6e3a9f9d28`
 
-No modernisation firmware has been flashed to hardware.
+The preserved historical image remains the primary rollback image.
 
 ## Local toolchains in WSL
 
@@ -63,7 +63,7 @@ Version:
 
 `arm-none-eabi-gcc 6.3.1 20170620 (GNU Tools for ARM Embedded Processors 6-2017-q2-update)`
 
-The GCC 6.3.1 toolchain has successfully built and linked the complete firmware and has passed the documented static acceptance checks. Hardware validation has not yet been performed.
+The GCC 6.3.1 toolchain has successfully built and linked the complete firmware, passed the documented static acceptance checks, and passed controlled validation on the actual nw2s::b hardware.
 
 ## Current build configuration
 
@@ -84,7 +84,7 @@ Linker maps are generated as:
 
 `gcc/app/build/nw2s-b-1.2-sd.map`
 
-## Current experiment
+## GCC 6 compiler experiment — hardware validated
 
 - GCC 6.3.1 successfully compiles and links the complete firmware.
 - Two compatibility fixes were required:
@@ -104,9 +104,30 @@ Linker maps are generated as:
 - Same prebuilt `libsam` archive is used by GCC 4.8.3 and GCC 6.
 - `Reset_Handler` still comes from `startup_sam3xa.o` in that `libsam` archive.
 - GCC 4.8.3 undefined symbols were investigated and found to be discarded-section references or expected weak runtime hooks.
-- No GCC 6 firmware has yet been uploaded or tested on hardware.
-- GCC 6 is now considered statically suitable for a controlled hardware validation stage.
-- Do not move to another compiler version yet.
+
+### Hardware validation, 2026-08-25
+
+The exact pre-validated GCC 6 candidate was staged separately and re-hashed on Windows before flashing:
+
+`9a49756c2f647ef84db63e82f6a73de0ba09bf13dd4a749a6341de3ffb56c4e8`
+
+It was uploaded manually through the Arduino Due Programming Port with Arduino BOSSA 1.6.1 using the standard erase/write/verify/boot/reset sequence. BOSSA wrote and successfully verified all 200740 bytes.
+
+Observed hardware results:
+
+- SAM3X booted normally after flashing.
+- 19200-baud serial output was clean when captured as raw bytes.
+- SD configuration JSON parsed successfully.
+- Core IO initialisation completed.
+- LED driver reported status `1`.
+- `DEFAULT.B` parsed and the loader was reached.
+- `PROG00` behaved as before, including VariableClock behaviour, LEDs and digital outputs.
+- The test programs, including audio/SD-based programs, behaved as before.
+- A complete power-off / cold-boot test passed, followed by successful `PROG00` and audio-program operation.
+
+**Result:** GCC 6.3.1 hardware validation PASSED.
+
+Do not move to another compiler version yet. GCC 6 is the accepted newer-compiler baseline for the next modernisation work, while the GCC 4.8.3 exact-hash build remains the regression reference.
 
 ## Build-tooling fixes
 
@@ -119,6 +140,8 @@ Linker maps are generated as:
 
 ## Known later issues — not current work
 
-These are recorded so they are not repeatedly rediscovered, but they should not be mixed into the GCC 6 experiment:
+These are recorded so they are not repeatedly rediscovered and should still be handled one at a time:
 
-- The bundled prebuilt `libsam_sam3x8e_gcc_rel.a` contains GCC 4.5.2 object code, including the SAM startup/vector-table object; leave it untouched for the first compiler experiment.
+- The bundled prebuilt `libsam_sam3x8e_gcc_rel.a` contains GCC 4.5.2 object code, including the SAM startup/vector-table object. GCC 6 hardware validation passed while using this exact archive, so replacing/rebuilding it is not required merely to continue modernisation and must remain a separately tested decision.
+- `configData[fileSize] == '\0';` and `programData[fileSize] == '\0';` use comparison instead of assignment, so JSON buffers are not explicitly terminated. This is a real source defect and is a good candidate for the next small, separately verified fix.
+- The legacy SD configuration format and parser disagree about module name/calibration structure in some archived configurations; preserve the working SD card and treat format/parser reconciliation as separate work.
