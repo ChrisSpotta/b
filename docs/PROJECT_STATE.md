@@ -108,13 +108,17 @@ Linker maps are generated as:
 - GCC 6 is now considered statically suitable for a controlled hardware validation stage.
 - Do not move to another compiler version yet.
 
+## Build-tooling fixes
+
+- `make clean` now removes both `build/` and `bin/`. `bin/` is recreated automatically via an order-only prerequisite on the `.bin` target, so a normal `make compile` still succeeds without any manual directory creation.
+- Verified behaviour-neutral: rebuilt after the fix with both the GCC 4.8.3 and GCC 6.3.1 toolchains and confirmed the reference SHA-256 hashes above were unchanged.
+
 ## Known later issues — not current work
 
 These are recorded so they are not repeatedly rediscovered, but they should not be mixed into the GCC 6 experiment:
 
 - `-nostdlib` appears in compile-only flags where it has no practical effect.
 - `-Isrc/drivers/usbhost` is duplicated in the include list.
-- `make clean` removes `build/` but not `bin/`, so stale `.bin` files can survive a clean.
 - `cxxabi-compat.cpp` contains an old comment about `nodefaultlibs` that no longer matches the actual link command.
 - Packed FAT/MBR structures are worth targeted review under newer compilers.
 - The bundled prebuilt `libsam_sam3x8e_gcc_rel.a` contains GCC 4.5.2 object code, including the SAM startup/vector-table object; leave it untouched for the first compiler experiment.
