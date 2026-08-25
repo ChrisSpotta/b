@@ -85,3 +85,9 @@ Reference SHA-256:
 **Reason:** Git already provides the real history. A small shared context layer gives different agents the same constraints, current checkpoint and rationale without adding another complex workflow to maintain.
 
 **Working rule:** One agent edits the working tree at a time; other agents may review. Meaningful new state belongs in `PROJECT_STATE.md`; durable architectural decisions belong here.
+
+## 2026-08-25 — GCC 6.3.1 passed static acceptance gate
+
+**Decision:** GCC 6.3.1 passed the first compiler-modernisation static acceptance gate. Further compiler upgrades are paused until GCC 6 has been validated on the actual nw2s::b hardware.
+
+**Reason:** Acceptance was based on successful complete build/link, preserved legacy binary identity with GCC 4.8.3 after compatibility changes, startup/HAL verification, linker-map/runtime inspection, symbol accounting and reasonable memory usage. Binary identity between GCC 4.8.3 and GCC 6 is not required.

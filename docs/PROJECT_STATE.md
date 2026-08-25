@@ -86,27 +86,27 @@ Linker maps are generated as:
 
 ## Current experiment
 
-Next step: build the completely unchanged source/core/platform with GCC 6.3.1 by overriding only `TOOLCHAIN_PATH` on the command line.
-
-From `gcc/app`:
-
-```sh
-make clean
-make \
-  TOOLCHAIN_PATH="$HOME/nw2s-toolchains/gcc-arm-none-eabi-6-2017-q2-update/bin" \
-  compile
-```
-
-For the first attempt:
-
-- do not edit firmware source;
-- do not rebuild or replace `libsam`;
-- do not update Arduino SAM/CMSIS;
-- do not change compile or link flags;
-- do not fix errors before recording the first failure;
-- do not upload or flash firmware.
-
-If the GCC 6 build succeeds, compare it with the GCC 4.8.3 baseline using binary size, section sizes, symbol set, linker map and targeted disassembly. A matching SHA-256 is not expected from a different compiler/runtime package.
+- GCC 6.3.1 successfully compiles and links the complete firmware.
+- Two compatibility fixes were required:
+  1. `utoa` parameter changed from `unsigned long` to `unsigned int` to match newer Newlib.
+  2. `ArduinoSTLCompat.h` shields STL entry points from Arduino `min`/`max` macros.
+- Both compatibility changes preserve the exact GCC 4.8.3 reference binary:
+  `a4508c45e6960ae8db061a0732c3eaa8558ea32a200f55493a690f6e3a9f9d28`
+- GCC 6 firmware SHA-256:
+  `9a49756c2f647ef84db63e82f6a73de0ba09bf13dd4a749a6341de3ffb56c4e8`
+- GCC 6 static comparison found:
+  `.text`       197404
+  `.ARM.exidx`     528
+  `.relocate`     2808
+  `.bss`          4320
+- GCC 6 flash usage: 200740 bytes / 38.3%
+- GCC 6 static SRAM usage: 7128 bytes / 7.3%
+- Same prebuilt `libsam` archive is used by GCC 4.8.3 and GCC 6.
+- `Reset_Handler` still comes from `startup_sam3xa.o` in that `libsam` archive.
+- GCC 4.8.3 undefined symbols were investigated and found to be discarded-section references or expected weak runtime hooks.
+- No GCC 6 firmware has yet been uploaded or tested on hardware.
+- GCC 6 is now considered statically suitable for a controlled hardware validation stage.
+- Do not move to another compiler version yet.
 
 ## Known later issues — not current work
 
