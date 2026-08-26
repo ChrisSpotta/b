@@ -109,3 +109,17 @@ Reference SHA-256:
 **Reason:** The newer compiler has now passed both the static acceptance gate and real-hardware behavioural validation without requiring a SAM core or `libsam` change.
 
 **Consequence:** GCC 6 may be used for the next modernisation work. The Makefile/toolchain default should not be changed as part of this decision; making GCC 6 the normal/default build remains a separate, testable change. Rebuilding or replacing the old prebuilt `libsam` also remains separate work rather than an automatic next step.
+
+## 2026-08-26 — Fix and accept explicit JSON buffer null termination
+
+**Decision:** Replace the two erroneous null-termination comparisons with assignments in the SD configuration and program readers, and accept the change after targeted build analysis and real-hardware validation.
+
+**Change:** In `gcc/app/src/util/b.cpp` and `gcc/app/src/util/SDFirmware.cpp`, change `buffer[fileSize] == '\0';` to `buffer[fileSize] = '\0';`. The final rebased source commit is `02ae83091fc2dadaa0d01ac837736bac68ebd235` (`Fix JSON buffer null termination`).
+
+**Evidence:** The affected buffers are allocated as `fileSize + 1`, populated with exactly `fileSize` bytes and then passed to aJSON, so the old comparison left the parser input without an explicit terminator. GCC 6.3.1 produced firmware SHA-256 `90ff909c4cd2e8991c574a467d81b99e7b0b778c208108d1615956d5c5061684`, size 200748 bytes. Targeted comparison showed only the two affected source objects changing and one added zero-byte store in each affected function. After the commit was rebased onto the accepted GCC 6 documentation history, a fresh build reproduced the exact same firmware hash and size.
+
+The exact post-fix image was staged and SHA-256 verified on Windows, then flashed through the Arduino Due Programming Port with Arduino BOSSA 1.6.1. BOSSA wrote and verified all 200748 bytes successfully. Serial startup showed successful configuration and program parsing and reached the loader. `PROG00`, ByteBeat DAC1 audio and known-good SD Looper playback all passed on the actual module. Existing archived configuration warnings about module/calibration format were unchanged and remain a separate issue.
+
+**Reason:** The original code relied on undefined buffer contents beyond the bytes read from the SD file. Explicitly terminating the C strings is the smallest correct fix and removes that parser-input hazard without combining it with unrelated SD-format compatibility work.
+
+**Consequence:** The current validated GCC 6 development firmware SHA-256 is `90ff909c4cd2e8991c574a467d81b99e7b0b778c208108d1615956d5c5061684`. The earlier `9a49756c...` GCC 6 image remains the pre-source-fix compiler-validation baseline. The GCC 4.8.3 `a4508c45...` hash remains the pre-source-fix legacy regression reference; the intentional source fix has its own GCC 4.8.3 build hash `9d6ca61721f265bd60e82bc2a088699262dc770d3889afa9f7493043082cc742`. Continue to treat SD configuration model/calibration reconciliation as separate work.
