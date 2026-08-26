@@ -132,7 +132,7 @@ void BinaryArc::readConfig()
 	uint fileSize = configFile.fileSize();
 	char configData[fileSize + 1];
 	configFile.read(configData, fileSize);
-	configData[fileSize] == '\0';
+	configData[fileSize] = '\0';
 		
 	aJsonObject* sdConfig = aJson.parse(configData);
 
