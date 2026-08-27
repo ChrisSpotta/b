@@ -497,10 +497,10 @@ void Looper::timer(unsigned long t)
 		/* Get the mix factor between 0 and 4096 for 0-5V */
 		if (t % 10 == 0)
 		{
-			this->controlvalImmediate = (analogRead(this->mixcontrol) - 2048) << 1;
+			int controlval = (analogRead(this->mixcontrol) - 2048) * 2;
 
 			/* Clip to unsigned 12 bits */
-			this->controlvalImmediate = (controlvalImmediate < 0) ? 0 : (controlvalImmediate > 4095) ? 4095 : controlvalImmediate;
+			this->controlvalImmediate = (controlval < 0) ? 0 : (controlval > 4095) ? 4095 : controlval;
 		}
 
 		int16_t controldifference = this->controlvalImmediate - this->controlval;
