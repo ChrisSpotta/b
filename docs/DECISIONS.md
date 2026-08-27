@@ -139,3 +139,41 @@ The preserved current SD-card archive does not contain dedicated `gamelife.cfg` 
 **Reason:** These are the same clear correctness defect already accepted in the general configuration/program loaders. Completing the fix removes the remaining known instances without combining unrelated refactoring or SD-format compatibility work.
 
 **Consequence:** The current validated GCC 6 development firmware SHA-256 is now `be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`. The earlier `90ff909c...` image remains the validated checkpoint after the first two JSON null-termination fixes; `9a49756c...` remains the pre-source-fix GCC 6 compiler-validation baseline. Continue to handle further defects one at a time, and keep SD model/calibration-format reconciliation separate.
+
+## 2026-08-27 — Return value from `getNotesFromJSON`
+
+**Decision:** Add an explicit `return notes;` to `nw2s::getNotesFromJSON(aJsonObject*, const char*)` in `gcc/app/src/util/JSONUtil.cpp`, accept the change purely on source/build/static verification, and record two further instances of the same defect class in `UsbMidi.cpp` as separate outstanding defects rather than fixing them now.
+
+**Change:** Commit `7505684e2562bc538afa7c8e6fd5ab1cf7886581` (`fix: return notes from getNotesFromJSON`) adds exactly one line — `return notes;` — after the existing `NoteSequenceData* notes = noteSequenceFromJSON(notesNode);` assignment. The preceding assignment is intentionally left unchanged. No header, no caller, no other source file, no Makefile, no flag, no documentation is touched by that commit.
+
+**Defect:** The 2-argument `getNotesFromJSON` is declared `NoteSequenceData*` and is non-void, but its body originally fell off the end after assigning the result of `noteSequenceFromJSON(notesNode)` to a local `notes` variable and never returning it. Per C++98 §6.6.3/2 (and the same wording in later standards, with `main` as the only special case), falling off the end of a value-returning function is undefined behaviour. The local variable was also flagged as unused by `-Wunused-variable`. A targeted one-off compile of `JSONUtil.cpp` with `-Wall -Wextra -Wreturn-type -Wmissing-noreturn` produced both warnings on both compilers before the fix; GCC 6.3.1 escalated the missing-return diagnostic to an error under `-Werror=return-type`. After the fix, both warnings are gone and GCC 6.3.1 with `-Werror=return-type` builds `JSONUtil.cpp` successfully.
+
+**Evidence:** The fix is the smallest possible semantic change. It deliberately does **not** refactor the assignment into `return noteSequenceFromJSON(notesNode);`, because the investigation and this decision both treat the existing assignment-and-return pair as the canonical source-level intent and want to keep the per-line diff minimal and reviewable.
+
+Built from a clean state with both accepted toolchains after the source commit:
+
+- GCC 4.8.3 firmware SHA-256: `c8cfd557ab5a9eaef1c151c337cfd070ed9a83e59d2a17779ec468833fd2a349` (196288 bytes).
+- GCC 6.3.1 firmware SHA-256: `be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0` (200748 bytes).
+
+Both hashes are **byte-for-byte identical** to their respective pre-fix references recorded in `docs/PROJECT_STATE.md` (the GCC 4.8.3 hash predates this commit and is the post-`c8cfd557…` reference for that compiler; the GCC 6.3.1 hash is the currently validated hardware image). The `.text`, `.ARM.exidx`, `.relocate` and `.bss` section sizes are unchanged on both compilers. Per-object comparison of `JSONUtil.cpp.o` against the pre-fix baseline shows the on-disk `.o` file differs only in DWARF debug line-number metadata (the source file is one line longer), while the `.text._ZN4nw2s16getNotesFromJSONEP11aJsonObjectPKc` and `.text._ZN4nw2s16getNotesFromJSONEP11aJsonObject` section extracts are **byte-identical** pre- and post-fix. Targeted disassembly comparison on both compilers confirms the generated machine code for both `getNotesFromJSON` overloads is unchanged: the success path already relied on the natural ARM AAPCS r0-as-return-register encoding after the `noteSequenceFromJSON()` call, so the explicit `return notes;` does not introduce a new instruction. The production Makefile uses `-w`, so the build log itself reports zero warnings either way.
+
+**Reason:** The C++ source was technically undefined behaviour. Even though both compilers happened to encode the success path in a way that returns the correct pointer in practice, no compiler is obligated to preserve that behaviour, and a future compiler version, optimisation flag change, or inlining decision is allowed to break it. Adding the single explicit `return notes;` removes the UB without changing observable behaviour or the emitted firmware.
+
+**Consequence:** The GCC 6.3.1 firmware SHA-256 remains `be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`. The currently validated hardware image is therefore also the post-fix firmware at the byte level, and **no hardware reflash was performed or is required** — flashing the same bytes again cannot provide any additional validation signal. Acceptance of this defect fix rests on reproducible source correction, dual-toolchain build verification, byte-for-byte firmware comparison against the existing references, per-symbol code comparison, and the absence of the targeted return-type warning. Continue to treat any remaining source defects as separate one-by-one work.
+
+## 2026-08-27 — Known outstanding missing-return defects in `UsbMidi.cpp`
+
+**Decision:** Record, but do not fix in this cycle, two further instances of the same `getNotesFromJSON`-style missing-return defect discovered while reviewing the JSON-related source on 2026-08-27.
+
+**Defects:**
+
+- `nw2s::USBPolyphonicMidiController* nw2s::USBPolyphonicMidiController::create(aJsonObject* data)` at `gcc/app/src/devices/UsbMidi.cpp:936-938`. The body is empty `{}` and currently falls off the end of a non-void function. Called from `gcc/app/src/util/SDFirmware.cpp` when parsing an SD program whose JSON device entry has `"type": "USBPolyphonicMidiController"`.
+- `nw2s::USBMidiApeggiator* nw2s::USBMidiApeggiator::create(aJsonObject* data)` at `gcc/app/src/devices/UsbMidi.cpp:1060-1063`. The body is `{ }` and currently falls off the end of a non-void function. Called from `gcc/app/src/util/SDFirmware.cpp` for `"type": "USBMidiApeggiator"`.
+
+Both functions emit `warning: no return statement in function returning non-void [-Wreturn-type]` on the unmodified source under both GCC 4.8.3 and GCC 6.3.1 when compiled with `-Wall -Wextra -Wreturn-type`.
+
+**Status:** Recorded only. **No source change, build, or commit has been made against either of these defects.** They are intentionally left for a separate future investigation cycle.
+
+**Reason for not fixing them in this cycle:** These are factory functions that should consume the supplied `aJsonObject* data`, parse it, and return a fully configured object. The investigation needed to determine what each one should do — i.e. what fields it needs to read from the JSON and which constructor to invoke — was deliberately not performed here. Speculating about the intended JSON shape or copying the structure of another working factory without verifying the original design intent could introduce a new behaviour change that would belong in its own reviewed commit and would deserve its own build verification and, if it changes emitted code, its own hardware acceptance pass.
+
+**Consequence:** These two defects remain in the tree as known outstanding issues. They are recorded here so they are not repeatedly rediscovered. They must be handled in a separate one-by-one defect cycle, starting with an investigation-only pass on the intended JSON contract of each factory before any code change is proposed.
