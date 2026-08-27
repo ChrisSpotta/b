@@ -198,3 +198,58 @@ Both functions emit `warning: no return statement in function returning non-void
 Future enablement of polyphonic USB MIDI JSON support must start with a deliberate, separately reviewed design pass that defines and validates the JSON contract and completes the polyphonic note-handling implementation. It is **not** part of the current preservation/modernisation scope and must not be folded into other unrelated changes.
 
 The companion latent defect — the missing `EventManager::registerUsbDevice(...)` call in the same `SDFirmware.cpp` dispatch arm — is recorded here as part of this dormant feature, but is also left unchanged in this cycle.
+
+## 2026-08-27 — `USBMidiApeggiator` JSON support classified as unfinished/dormant
+
+**Decision:** Investigate the empty `nw2s::USBMidiApeggiator::create(aJsonObject* data)` factory, classify the result, and explicitly **do not** implement or enable arpeggiator USB MIDI JSON support as part of the current preservation/modernisation work.
+
+**Investigation outcome:**
+
+- The empty `USBMidiApeggiator::create(aJsonObject* data)` body at `gcc/app/src/devices/UsbMidi.cpp:1060-1063` has been on disk since the original 2015-05-26 JSON work (commit `aa84bda` — `checkpoint getting json working`) and has never been filled in. No implementation has ever existed in the repository history. The blank line inside the body was added by `38e8d3a` (2015-05-31, `Basic arpeggiator working`).
+- No bundled, preserved or historical SD program JSON under `flash/programs/`, `flash/programs/examples/`, or in any tracked sketch / `.b` / `.ino` file uses `"type": "USBMidiApeggiator"`. No surviving JSON example, sample, documentation fragment, comment or historical implementation establishes the intended JSON contract for this factory.
+- The underlying `USBMidiApeggiator` class is **substantially implemented** for typed-factory use: `onNoteOn` / `onNoteOff` push and (optionally) sort into the note stack; `timer` closes the gate when the stack empties; `reset` (the `BeatDevice` callback) advances the arpeggiator step, including latch edge handling, note-index increment with up/down direction reversal, octave cycling over a 0..4 range, density-driven random drop via `Entropy::getValue(2047)`, pitch CV via `millivoltFromMidiNote` plus octave offset, velocity via `GET_12BITCV`, trigger via `Gate::reset`, and gate HIGH. The companion `bDemoMidiArp.ino` (history) and `gcc/app/src/firmware/midiArpMain.cpp` (current) demonstrate the typed factory in real use.
+- However, the class has substantial **unfinished feature surface**: `onPressure` / `onAftertouch` / `onPitchbend` are commented out at `gcc/app/src/devices/UsbMidi.h:377-379`, and four methods — `setPattern(std::vector<uint32_t>)`, `setPatternSelector(PinAnalogIn)`, `addTriggerPin(uint32_t, PinDigitalOut)` and `setClockInput()` — are declared at `gcc/app/src/devices/UsbMidi.h:366-370` but **never defined anywhere** in the tracked tree (`git log --all -S` confirms zero commits implementing them). The `std::vector<uint32_t> pattern` and `uint32_t patternIndex` members are dead state (the constructor self-assigns into `pattern` from a parameter name that no longer exists). The `pressure` and `afterTouch` analog outputs are constructed but never written to.
+- The dispatch in `gcc/app/src/util/SDFirmware.cpp:435-451` is **correctly structured** for this device: it requires `clockDevice != NULL`, calls `EventManager::registerUsbDevice(controller)`, calls `clockDevice->registerDevice(controller)`, and does **not** incorrectly register the controller as an ordinary `TimeBasedDevice`. No registration-related defect exists in this dispatch arm (contrast with the polyphonic dispatch arm, which is documented separately as missing the `registerUsbDevice` call).
+- The empty non-void factory is a latent undefined-behaviour path: per C++98 §6.6.3/2 (unchanged in later standards), reaching the end of a value-returning function without a `return` is undefined. Both GCC 4.8.3 and GCC 6.3.1 emit `no return statement in function returning non-void [-Wreturn-type]` under `-Wall -Wextra -Wreturn-type`; the production Makefile suppresses the warning with `-w`. If a user-authored SD program containing `"type": "USBMidiApeggiator"` reached the dispatch, `Clock::timer()` would dereference the resulting NULL pointer on the next beat and trigger a Cortex-M3 HardFault. None of the preserved or bundled SD program examples currently takes this branch.
+
+**Reason:** The structural shape of an arpeggiator JSON factory is well-established from the four working sibling factories (`USBMidiCCController`, `USBMonophonicMidiController`, `USBSplitMonoMidiController`, `USBMidiTriggers`), but the **exact external JSON contract is not recoverable from the tree**:
+
+- `"controllerMap"` is established by the base-class `addControlPins(aJsonObject*)` pattern (confirmed).
+- Field names for the seven pin fields (`gate`, `pitch`, `velocity`, `pressure`, `aftertouch`, `density`, `latch`) are strongly inferable from the working `USBMonophonicMidiController` factory but are not proven by any actual example for this device.
+- The trigger field spelling is not established (constructor uses `triggerPin`; sibling factories use `triggerOn` / `triggerOff`; the Apeggiator has only one trigger, so no precedent applies).
+- The constructor parameter named `octaves` is actually a `PinAnalogIn` (an analog input pin used by `reset()` to derive a 0..4 octave range); the intended JSON semantics — pin index or count — are uncertain.
+- No JSON-to-`NoteStackSortOrder` helper exists anywhere in the project, so exposing `sortOrder` over JSON would require new infrastructure rather than restoration.
+- Pattern-related fields and the four undeclared setter methods have no surviving draft or comment.
+
+Implementing the factory now would require **inventing field names, inventing an enum-to-JSON bridge, and deciding what to do about the four undeclared setter methods and the four commented-out MIDI handlers** — closer to new interface design than to restoration. AGENTS.md and the previous decision recorded above (the 2026-08-27 "Known outstanding missing-return defects" entry) both call for preservation-first work and forbid speculative new functionality.
+
+**Consequence:** This defect is reclassified from "outstanding missing-return" to **unfinished/dormant JSON support for an otherwise substantially functional typed C++ device**. **No source change has been made.** The currently validated GCC 6 firmware SHA-256 `be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0` remains the post-investigation firmware. The empty factory body in `UsbMidi.cpp:1060-1063` and the surrounding class state all remain on disk unchanged.
+
+**Do not implement `USBMidiApeggiator::create(aJsonObject*)` during the current preservation modernisation unless reliable historical evidence of the intended JSON contract is recovered.** A future deliberately-designed JSON interface would be **feature development, not restoration**, and must be handled as a separate reviewable change with its own JSON contract, dedicated example configuration, dual-toolchain build verification and hardware USB-host validation.
+
+**Newly identified items requiring their own investigation before any change:**
+
+The following defects were observed during this investigation but are **not classified as immediate-fix candidates**. They are recorded here as separate investigation targets so they are not lost; each requires its own dedicated investigation cycle.
+
+1. The constructor statement at `gcc/app/src/devices/UsbMidi.cpp:1076`:
+
+   ```cpp
+   this->pattern = pattern;
+   ```
+
+   The constructor has no parameter named `pattern` (it was removed in commit `71247a4`, 2015-05-31, `checkpoint getting arp to have a lot of new stuff`). The statement is therefore a self-assignment on the just-default-constructed `std::vector<uint32_t> pattern` member that has no observable effect, and a probable leftover from the earlier 11-parameter signature.
+
+2. Four methods declared at `gcc/app/src/devices/UsbMidi.h:366-370` but **never defined anywhere** in the tracked tree:
+
+   - `void USBMidiApeggiator::setPattern(std::vector<uint32_t> pattern)`
+   - `void USBMidiApeggiator::setPatternSelector(PinAnalogIn input)`
+   - `void USBMidiApeggiator::addTriggerPin(uint32_t note, PinDigitalOut output)`
+   - `void USBMidiApeggiator::setClockInput()`
+
+   Any translation unit that references these will fail to link. The 16 hardcoded `patterns[]` array at `gcc/app/src/devices/UsbMidi.h:140-158` (added by `71247a4`) is unused by `USBMidiApeggiator` and was presumably intended to feed `setPatternSelector`.
+
+3. The members `std::vector<uint32_t> pattern` (constructor-referenced only) and `uint32_t patternIndex = 0` (declared but never written or read anywhere outside the class declaration) appear to be **dead/incomplete feature state**.
+
+4. The `AnalogOut* pressure` and `AnalogOut* afterTouch` members are constructed in the constructor and stored, but the current implementation does not drive them — the `onPressure` / `onAftertouch` handlers are commented out and `reset` does not output them.
+
+These four findings are **investigation candidates only**, not authorised fixes. They are not part of the current preservation/modernisation scope and must not be folded into other unrelated changes.
