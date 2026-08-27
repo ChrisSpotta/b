@@ -1,6 +1,6 @@
 # nw2s::b Project State
 
-Updated: 2026-08-26
+Updated: 2026-08-27
 
 ## Repository checkpoint
 
@@ -8,7 +8,7 @@ Branch: `modernisation-2026`
 
 Last firmware/build-affecting commit before the project-documentation layer:
 
-`02ae83091fc2dadaa0d01ac837736bac68ebd235` — `Fix JSON buffer null termination`
+`3e8da6466bd9c985a78031fffa400f5f37301cee` — `Fix remaining JSON buffer null termination`
 
 The modernisation history is intentionally linear and made of small, verified changes.
 
@@ -20,6 +20,7 @@ The modernisation history is intentionally linear and made of small, verified ch
 4. `9ace4cf` — Remove stale tracked linker-map artefact.
 5. `5c8ac27` — Explicitly pin C to `gnu90` and C++ to `gnu++98`.
 6. `02ae830` — Fix JSON configuration/program buffer null termination; hardware validated with GCC 6.3.1.
+7. `3e8da64` — Fix the two remaining device-specific JSON buffer null-termination defects; hardware validated with GCC 6.3.1.
 
 The initial behaviour-neutral build checkpoints above were tested with the GCC 4.8.3 Linux toolchain. Before intentional firmware-source behaviour changes, the resulting firmware retained the same SHA-256:
 
@@ -130,7 +131,7 @@ Observed hardware results:
 
 GCC 6 is the accepted newer-compiler baseline for the next modernisation work, while GCC 4.8.3 remains the legacy regression/reference compiler.
 
-## JSON buffer null-termination fix — hardware validated
+## Initial JSON buffer null-termination fix — hardware validated
 
 Commit:
 
@@ -173,13 +174,73 @@ Observed hardware results:
 - ByteBeat DAC1 audio passed.
 - Known-good SD Looper playback passed.
 
-**Result:** JSON null-termination fix hardware validation PASSED.
+**Result:** Initial JSON null-termination fix hardware validation PASSED.
 
-The current validated GCC 6 development firmware is therefore:
+That firmware SHA-256 was:
 
 `90ff909c4cd2e8991c574a467d81b99e7b0b778c208108d1615956d5c5061684`
 
-The older `9a49756c...` GCC 6 image remains useful as the pre-source-fix compiler-validation baseline. The GCC 4.8.3 `a4508c45...` image remains the pre-source-fix legacy regression reference; an intentional source fix is expected to change that hash.
+It is now superseded as the current development firmware by the remaining device-specific null-termination fix below.
+
+## Remaining JSON buffer null-termination fixes — hardware validated
+
+Commit:
+
+`3e8da6466bd9c985a78031fffa400f5f37301cee` — `Fix remaining JSON buffer null termination`
+
+Repository-wide review found the same comparison-versus-assignment defect in two device-specific SD configuration readers:
+
+- `gcc/app/src/devices/GameOfLife.cpp` — `GameOfLife::readConfig()`
+- `gcc/app/src/devices/BinaryArc.cpp` — `BinaryArc::readConfig()`
+
+Both allocate `fileSize + 1`, read exactly `fileSize` bytes, then pass the buffer to aJSON. The commit changes only the two remaining `configData[fileSize] == '\0';` expressions to `configData[fileSize] = '\0';`. A repository search under `gcc/app/src/` found no remaining instances of this defect pattern after the change.
+
+Build verification:
+
+- GCC 4.8.3 firmware SHA-256:
+  `c8cfd557ab5a9eaef1c151c337cfd070ed9a83e59d2a17779ec468833fd2a349`
+- GCC 4.8.3 size: 196288 bytes.
+- GCC 6.3.1 firmware SHA-256:
+  `be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`
+- GCC 6.3.1 size: 200748 bytes.
+- GCC 6.3.1 sections remained:
+  `.text`       197412
+  `.ARM.exidx`     528
+  `.relocate`     2808
+  `.bss`          4320
+- Only `GameOfLife.cpp.o` and `BinaryArc.cpp.o` changed in the targeted object comparison under both toolchains.
+- Targeted disassembly showed one new `strb.w` zero-byte store after the SD-file read in each affected function.
+- A fresh GCC 6.3.1 build from the clean committed tree reproduced the exact candidate SHA-256 `be8505d...` and 200748-byte size before flashing.
+
+### Hardware validation, 2026-08-27
+
+The exact GCC 6 image was copied from WSL to Windows and independently SHA-256 verified before flashing. Arduino BOSSA 1.6.1 found the SAM3X device, erased flash, wrote all 200748 bytes / 785 pages, verified all 200748 bytes successfully, set boot-from-flash and reset the CPU.
+
+Serial startup after reset showed:
+
+- Configuration parsed successfully.
+- The existing `NW2S-B-1-1-0` model warning remained unchanged.
+- The existing 16 output-calibration-format warnings remained unchanged.
+- Core IO and LED-driver initialisation completed.
+- Program JSON parsed successfully and the loader was reached.
+
+The Due RESET button and the nw2s::b front-panel RESET button were both tested with the same 19200-baud serial capture and produced the same complete firmware restart sequence. For normal testing, the front-panel RESET can therefore be used as a practical processor reset.
+
+Smoke-test results:
+
+- `PROG00` VariableClock/LED/digital-output behaviour: PASS.
+- ByteBeat DAC1 audio: PASS.
+- Known-good SD Looper playback: PASS.
+
+The preserved current SD-card archive contains only `sys.b` in its configuration directory, so the `GameOfLife::readConfig()` and `BinaryArc::readConfig()` file-loading paths were not separately runtime-exercised with dedicated `gamelife.cfg` / `binarc.cfg` files during this validation. Their source changes were statically verified by dual-toolchain build/object/disassembly comparison; the normal firmware image passed the established hardware smoke tests.
+
+**Result:** Remaining JSON null-termination fix hardware validation PASSED.
+
+The current validated GCC 6 development firmware is therefore:
+
+`be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`
+
+The older `90ff909c...` image is the validated state after the first two JSON null-termination fixes, and `9a49756c...` remains the pre-source-fix GCC 6 compiler-validation baseline. The GCC 4.8.3 `a4508c45...` image remains the pre-source-fix legacy regression reference.
 
 ## Build-tooling fixes
 
