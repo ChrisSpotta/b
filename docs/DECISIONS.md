@@ -231,13 +231,13 @@ Implementing the factory now would require **inventing field names, inventing an
 
 The following defects were observed during this investigation but are **not classified as immediate-fix candidates**. They are recorded here as separate investigation targets so they are not lost; each requires its own dedicated investigation cycle.
 
-1. The constructor statement at `gcc/app/src/devices/UsbMidi.cpp:1076`:
+1. **[RESOLVED 2026-08-27]** The constructor statement at `gcc/app/src/devices/UsbMidi.cpp:1076`:
 
    ```cpp
    this->pattern = pattern;
    ```
 
-   The constructor has no parameter named `pattern` (it was removed in commit `71247a4`, 2015-05-31, `checkpoint getting arp to have a lot of new stuff`). The statement is therefore a self-assignment on the just-default-constructed `std::vector<uint32_t> pattern` member that has no observable effect, and a probable leftover from the earlier 11-parameter signature.
+   The constructor had no parameter named `pattern` (it was removed in commit `71247a4`, 2015-05-31). The statement was a self-assignment on the just-default-constructed `std::vector<uint32_t> pattern` member. It has now been removed. Removing it is independently justified and does not alter the unfinished pattern architecture. GCC 4.8.3 `.o` size dropped by 188 bytes; GCC 6.3.1 `.o` size dropped by 174 bytes. The final firmware remained byte-for-byte identical under both toolchains. Validated GCC 6 SHA-256 remains `be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`. No hardware reflash was required.
 
 2. Four methods declared at `gcc/app/src/devices/UsbMidi.h:366-370` but **never defined anywhere** in the tracked tree:
 
