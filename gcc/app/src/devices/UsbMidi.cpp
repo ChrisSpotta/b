@@ -1073,7 +1073,6 @@ USBMidiApeggiator::USBMidiApeggiator(PinDigitalOut gatePin, PinDigitalOut trigge
 	this->afterTouch = (afterTouchPin != ANALOG_OUT_NONE) ? AnalogOut::create(afterTouchPin) : NULL;
 
 	this->density = density;
-	this->pattern = pattern;
 	this->sortOrder = sortOrder;
 	this->octaveInput = octaves;
 	this->latch = latch;
