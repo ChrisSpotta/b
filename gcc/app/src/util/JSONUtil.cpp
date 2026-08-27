@@ -240,6 +240,7 @@ NoteSequenceData* nw2s::getNotesFromJSON(aJsonObject* data, const char* nodeName
 	}
 
 	NoteSequenceData* notes = noteSequenceFromJSON(notesNode);	
+	return notes;
 }
 
 std::vector<int>* nw2s::getIntCollectionFromJSON(aJsonObject* data, const char* nodeName)
