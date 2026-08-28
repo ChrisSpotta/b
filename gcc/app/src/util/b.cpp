@@ -94,6 +94,28 @@ SdFile b::getSDRoot()
 	}	
 }
 
+static bool getNumericValue(aJsonObject* node, double& value)
+{
+    if (node == NULL)
+    {
+        return false;
+    }
+
+    if (node->type == aJson_Int)
+    {
+        value = (double)node->valueint;
+        return true;
+    }
+
+    if (node->type == aJson_Float)
+    {
+        value = node->valuefloat;
+        return true;
+    }
+
+    return false;
+}
+
 void b::configure()
 {
 	/* Loads the config JSON file from SD card (if it exists) and sets up the system variables */
@@ -205,30 +227,119 @@ void b::configure()
 		
 		if (aJson.getArraySize(offsetChannelsNode) == 16)
 		{
+			bool isNative = true;
 			for (int j = 0; j < 16; j++)
 			{
-				aJsonObject* offsetNode = aJson.getArrayItem(offsetChannelsNode, j); 
-		
-				if (aJson.getArraySize(offsetNode) == 21)
+				aJsonObject* offsetNode = aJson.getArrayItem(offsetChannelsNode, j);
+				if (!offsetNode || offsetNode->type != aJson_Array || aJson.getArraySize(offsetNode) != 21)
 				{
+					isNative = false;
+					break;
+				}
+			}
+
+			bool isLegacy = false;
+			aJsonObject* scaleChannelsNode = aJson.getObjectItem(outputNode, "scale"); 
+			if (!isNative && scaleChannelsNode != NULL && aJson.getArraySize(scaleChannelsNode) == 16)
+			{
+				isLegacy = true;
+				for (int j = 0; j < 16; j++)
+				{
+					aJsonObject* offsetNode = aJson.getArrayItem(offsetChannelsNode, j);
+					aJsonObject* scaleNode = aJson.getArrayItem(scaleChannelsNode, j);
+					if (!offsetNode || (offsetNode->type != aJson_Int && offsetNode->type != aJson_Float))
+					{
+						isLegacy = false;
+						break;
+					}
+					if (!scaleNode || (scaleNode->type != aJson_Int && scaleNode->type != aJson_Float))
+					{
+						isLegacy = false;
+						break;
+					}
+				}
+			}
+
+			if (isNative)
+			{
+				for (int j = 0; j < 16; j++)
+				{
+					aJsonObject* offsetNode = aJson.getArrayItem(offsetChannelsNode, j); 
 					Serial.print("Output Offset: { ");
 			
-					for (int i = 0; i < aJson.getArraySize(offsetNode); i++)
+					for (int i = 0; i < 21; i++)
 					{
 						aJsonObject* valueNode = aJson.getArrayItem(offsetNode, i);
-				
 						b::outputOffset[j][i] = valueNode->valueint;
-
 						Serial.print(b::outputOffset[j][i]);
 						Serial.print(" ");
 					}
-			
 					Serial.println("}");
+				}
+				Serial.println("Native output tuning loaded.");
+			}
+			else if (isLegacy)
+			{
+				bool overflowError = false;
+				
+				// Two-pass validation: Range check
+				for (int j = 0; j < 16; j++)
+				{
+					double legacyScale = 0.0;
+					double legacyOffset = 0.0;
+					getNumericValue(aJson.getArrayItem(scaleChannelsNode, j), legacyScale);
+					getNumericValue(aJson.getArrayItem(offsetChannelsNode, j), legacyOffset);
+					
+					for (int i = 0; i < 21; i++)
+					{
+						double V = -10000.0 + (i * 1000.0);
+						double corrected = (V * legacyScale / 1000.0) + legacyOffset;
+						double correction = corrected - V;
+						
+						if (!(correction > -32768.5 && correction < 32767.5))
+						{
+							overflowError = true;
+							break;
+						}
+					}
+					if (overflowError) break;
+				}
+				
+				if (overflowError)
+				{
+					Serial.println("Legacy calibration correction outside int16_t range.");
 				}
 				else
 				{
-					Serial.println("Configuration requires 16 offset channels, skipping.");
+					// Validation succeeded, write to global table
+					for (int j = 0; j < 16; j++)
+					{
+						double legacyScale = 0.0;
+						double legacyOffset = 0.0;
+						getNumericValue(aJson.getArrayItem(scaleChannelsNode, j), legacyScale);
+						getNumericValue(aJson.getArrayItem(offsetChannelsNode, j), legacyOffset);
+						
+						Serial.print("Output Offset: { ");
+						for (int i = 0; i < 21; i++)
+						{
+							double V = -10000.0 + (i * 1000.0);
+							double corrected = (V * legacyScale / 1000.0) + legacyOffset;
+							double correction = corrected - V;
+							
+							int32_t rounded = correction >= 0.0 ? (int32_t)(correction + 0.5) : (int32_t)(correction - 0.5);
+							b::outputOffset[j][i] = (int16_t)rounded;
+							
+							Serial.print(b::outputOffset[j][i]);
+							Serial.print(" ");
+						}
+						Serial.println("}");
+					}
+					Serial.println("Legacy output tuning converted successfully.");
 				}
+			}
+			else
+			{
+				Serial.println("Malformed/mixed output calibration rejected.");
 			}
 		}
 		else
