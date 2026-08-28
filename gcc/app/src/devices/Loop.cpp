@@ -167,7 +167,7 @@ Looper* Looper::create(aJsonObject* data)
 	}
 	
 	/* TRIGGER OUTPUT */
-	if (triggerout != ANALOG_OUT_NONE)
+	if (triggerout != DIGITAL_OUT_NONE)
 	{
 		looper->setTriggerOut(triggerout);
 	}
