@@ -253,3 +253,29 @@ The following defects were observed during this investigation but are **not clas
 4. The `AnalogOut* pressure` and `AnalogOut* afterTouch` members are constructed in the constructor and stored, but the current implementation does not drive them — the `onPressure` / `onAftertouch` handlers are commented out and `reset` does not output them.
 
 These four findings are **investigation candidates only**, not authorised fixes. They are not part of the current preservation/modernisation scope and must not be folded into other unrelated changes.
+
+## 2026-08-28 — Fix Looper mix control unsigned-wrap clamping defect
+
+**Decision:** Replace the undefined-behaviour left-shift and flawed clamping logic in `Looper::timer()` with a signed-multiply and a signed bounds check before assignment to the `uint16_t` member.
+
+**Evidence:**
+In `gcc/app/src/devices/Loop.cpp`, the calculation:
+```cpp
+this->controlvalImmediate = (analogRead(this->mixcontrol) - 2048) << 1;
+this->controlvalImmediate = (controlvalImmediate < 0) ? 0 : (controlvalImmediate > 4095) ? 4095 : controlvalImmediate;
+```
+left-shifted a negative signed value for inputs below 2048 (undefined behaviour in C++98). Assigning the result to the `uint16_t` member `controlvalImmediate` wrapped it to a large positive value. The subsequent `< 0` bounds check was then statically false (emitting `-Wtype-limits`), causing the lower half of the mix-control range to incorrectly jump to `4095` instead of clamping at `0`.
+
+The fix uses a signed local temporary:
+```cpp
+int controlval = (analogRead(this->mixcontrol) - 2048) * 2;
+this->controlvalImmediate = (controlval < 0) ? 0 : (controlval > 4095) ? 4095 : controlval;
+```
+
+**Verification:**
+- GCC 4.8.3 regression size dropped from 196288 to 196296 bytes. Hash: `8d79e427a74f56a2bda4631f5b8f92e6f0e333534914341074e2445b4d146ce3`.
+- GCC 6.3.1 size changed from 200748 to 200740 bytes. Hash: `931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b`.
+- The `-Wtype-limits` diagnostic was cleared, and only `Loop.cpp.o` differed under both toolchains. Targeted disassembly confirmed the correct signed branching.
+- The GCC 6 candidate was flashed and hardware validated on Windows. Turning the physical mix-control below centre no longer jumps to full-scale, confirming the defect is resolved.
+
+**Consequence:** The GCC 6.3.1 firmware SHA-256 `931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b` is the new hardware-validated baseline firmware image. The previous candidate (`be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`) remains a documented rollback checkpoint.

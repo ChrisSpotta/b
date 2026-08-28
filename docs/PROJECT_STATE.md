@@ -1,6 +1,6 @@
 # nw2s::b Project State
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
 ## Repository checkpoint
 
@@ -8,7 +8,7 @@ Branch: `modernisation-2026`
 
 Last firmware/build-affecting commit before the project-documentation layer:
 
-`3e8da6466bd9c985a78031fffa400f5f37301cee` — `Fix remaining JSON buffer null termination`
+`7b934b471013cc7e523a9fa61e53724f0950053f` — `fix: clamp Looper mix control before unsigned conversion`
 
 The modernisation history is intentionally linear and made of small, verified changes.
 
@@ -21,6 +21,7 @@ The modernisation history is intentionally linear and made of small, verified ch
 5. `5c8ac27` — Explicitly pin C to `gnu90` and C++ to `gnu++98`.
 6. `02ae830` — Fix JSON configuration/program buffer null termination; hardware validated with GCC 6.3.1.
 7. `3e8da64` — Fix the two remaining device-specific JSON buffer null-termination defects; hardware validated with GCC 6.3.1.
+8. `7b934b4` — Fix Looper mix control unsigned-wrap clamping defect; hardware validated with GCC 6.3.1.
 
 The initial behaviour-neutral build checkpoints above were tested with the GCC 4.8.3 Linux toolchain. Before intentional firmware-source behaviour changes, the resulting firmware retained the same SHA-256:
 
@@ -186,7 +187,7 @@ It is now superseded as the current development firmware by the remaining device
 
 Commit:
 
-`3e8da6466bd9c985a78031fffa400f5f37301cee` — `Fix remaining JSON buffer null termination`
+`7b934b471013cc7e523a9fa61e53724f0950053f` — `fix: clamp Looper mix control before unsigned conversion`
 
 Repository-wide review found the same comparison-versus-assignment defect in two device-specific SD configuration readers:
 
@@ -290,6 +291,31 @@ and is also the post-`getNotesFromJSON`-correction firmware at the byte level.
 - `-nostdlib` was confirmed to reach only `-c` compile commands and never the ELF link command, so it was removed from `COMMON_FLAGS` as an inert linker-only option. GCC 4.8.3 still reproduced its exact pre-source-fix reference firmware hash, and GCC 6.3.1 still reproduced its accepted pre-source-fix firmware hash and section sizes, so the cleanup was behaviour-neutral.
 - The vendored SdFat packed FAT/MBR structures were reviewed under both GCC 4.8.3 and GCC 6.3.1. Structure sizes/offsets and representative generated access code were equivalent between the two compilers, and the reachable unaligned accesses in `SdVolume::init()` are supported by the Cortex-M3 target's normal unaligned-access behaviour. No source change is required.
 - The stale `nodefaultlibs` explanation in `cxxabi-compat.cpp` was corrected to describe what the function actually does. The change is comment-only; GCC 4.8.3 and GCC 6.3.1 reproduced their exact then-current accepted firmware hashes and GCC 6 section sizes.
+
+
+## Looper mix-control unsigned-wrap fix — hardware validated
+
+Commit:
+
+`7b934b471013cc7e523a9fa61e53724f0950053f` — `fix: clamp Looper mix control before unsigned conversion`
+
+The `Looper` mix-control read subtracted `2048` and left-shifted the result. Inputs below `2048` produced a negative signed intermediate, triggering C++98 undefined behaviour on the shift. When cast to `uint16_t`, this negative value wrapped, bypassing the bounds check and incorrectly jumping the mix to full-scale (4095).
+
+The commit modifies `gcc/app/src/devices/Loop.cpp` to use a signed local `int` temporary and multiplication, safely executing the math and bounds check before writing to the unsigned member.
+
+Build verification:
+
+- GCC 4.8.3 post-fix firmware SHA-256:
+  `8d79e427a74f56a2bda4631f5b8f92e6f0e333534914341074e2445b4d146ce3` (196296 bytes)
+- GCC 6.3.1 post-fix firmware SHA-256:
+  `931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b` (200740 bytes)
+- Only `Loop.cpp.o` differed under both toolchains. Targeted disassembly confirmed the expected signed bounds-check branch generation. The prior `-Wtype-limits` diagnostic was cleared.
+
+Hardware validation:
+
+The GCC 6 candidate was SHA-256 verified and flashed on Windows using Arduino BOSSA 1.6.1. The hardware returned to normal operation, and `PROG00`/ByteBeat/SD Looper regression tests all passed. Physical manipulation of the mix control in blend mode confirmed the exact defect was cured: turning below centre correctly clamped to zero without jumping back to full-scale.
+
+**Result:** GCC 6.3.1 hardware validation PASSED. The previous validated GCC 6 development firmware (`be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`) is superseded by this fix.
 
 ## Known later issues — not current work
 
