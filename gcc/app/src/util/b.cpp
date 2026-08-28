@@ -35,7 +35,7 @@ bool b::inputSoftTune = false;
 bool b::outputSoftTune = false;
 int32_t b::dimming = 50;
 
-int8_t b::outputOffset[16][21] = { 
+int16_t b::outputOffset[16][21] = { 
 	
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
