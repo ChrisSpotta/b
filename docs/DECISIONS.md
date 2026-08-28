@@ -279,3 +279,25 @@ this->controlvalImmediate = (controlval < 0) ? 0 : (controlval > 4095) ? 4095 : 
 - The GCC 6 candidate was flashed and hardware validated on Windows. Turning the physical mix-control below centre no longer jumps to full-scale, confirming the defect is resolved.
 
 **Consequence:** The GCC 6.3.1 firmware SHA-256 `931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b` is the new hardware-validated baseline firmware image. The previous candidate (`be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`) remains a documented rollback checkpoint.
+
+## 2026-08-28 — Fix Looper trigger-output sentinel mismatch
+
+**Decision:** Replace the mismatched `ANALOG_OUT_NONE` sentinel with `DIGITAL_OUT_NONE` when comparing the `triggerout` JSON value.
+
+**Evidence:**
+In `gcc/app/src/devices/Loop.cpp`, the `Looper::create(aJsonObject* data)` factory parsed a digital output but checked it against an analog sentinel:
+```cpp
+PinDigitalOut triggerout = getDigitalOutputFromJSON(data, triggeroutputNodeName);
+if (triggerout != ANALOG_OUT_NONE) { ... }
+```
+Both `DIGITAL_OUT_NONE` and `ANALOG_OUT_NONE` are defined as `-1` in `gcc/app/src/util/IO.h`. Because the underlying values are identical, the comparison was numerically correct but produced a `-Wenum-compare` diagnostic under GCC due to the mismatched enum types.
+
+**Verification:**
+The source was updated to compare against `DIGITAL_OUT_NONE`.
+- Both GCC 4.8.3 and GCC 6.3.1 produced firmware images that were perfectly byte-for-byte identical to their accepted reference states.
+  - GCC 4.8.3 Hash: `8d79e427a74f56a2bda4631f5b8f92e6f0e333534914341074e2445b4d146ce3` (196296 bytes)
+  - GCC 6.3.1 Hash: `931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b` (200740 bytes)
+- The `-Wenum-compare` warning was cleared.
+- Object comparison and targeted disassembly confirmed no machine-code change occurred since the substituted literal was `-1` in both cases.
+
+**Consequence:** The source fix is accepted without requiring a hardware reflash. The previously hardware-validated GCC 6.3.1 image (`931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b`) remains unchanged and active.

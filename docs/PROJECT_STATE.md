@@ -8,7 +8,7 @@ Branch: `modernisation-2026`
 
 Last firmware/build-affecting commit before the project-documentation layer:
 
-`7b934b471013cc7e523a9fa61e53724f0950053f` — `fix: clamp Looper mix control before unsigned conversion`
+`b3ec73b01677fc7a02bd7e512ec26777e7183c60` — `fix: use digital sentinel for Looper trigger output`
 
 The modernisation history is intentionally linear and made of small, verified changes.
 
@@ -22,6 +22,7 @@ The modernisation history is intentionally linear and made of small, verified ch
 6. `02ae830` — Fix JSON configuration/program buffer null termination; hardware validated with GCC 6.3.1.
 7. `3e8da64` — Fix the two remaining device-specific JSON buffer null-termination defects; hardware validated with GCC 6.3.1.
 8. `7b934b4` — Fix Looper mix control unsigned-wrap clamping defect; hardware validated with GCC 6.3.1.
+9. `b3ec73b` — Fix Looper trigger-output sentinel mismatch; accepted without reflash.
 
 The initial behaviour-neutral build checkpoints above were tested with the GCC 4.8.3 Linux toolchain. Before intentional firmware-source behaviour changes, the resulting firmware retained the same SHA-256:
 
@@ -187,7 +188,7 @@ It is now superseded as the current development firmware by the remaining device
 
 Commit:
 
-`7b934b471013cc7e523a9fa61e53724f0950053f` — `fix: clamp Looper mix control before unsigned conversion`
+`b3ec73b01677fc7a02bd7e512ec26777e7183c60` — `fix: use digital sentinel for Looper trigger output`
 
 Repository-wide review found the same comparison-versus-assignment defect in two device-specific SD configuration readers:
 
@@ -297,7 +298,7 @@ and is also the post-`getNotesFromJSON`-correction firmware at the byte level.
 
 Commit:
 
-`7b934b471013cc7e523a9fa61e53724f0950053f` — `fix: clamp Looper mix control before unsigned conversion`
+`b3ec73b01677fc7a02bd7e512ec26777e7183c60` — `fix: use digital sentinel for Looper trigger output`
 
 The `Looper` mix-control read subtracted `2048` and left-shifted the result. Inputs below `2048` produced a negative signed intermediate, triggering C++98 undefined behaviour on the shift. When cast to `uint16_t`, this negative value wrapped, bypassing the bounds check and incorrectly jumping the mix to full-scale (4095).
 
@@ -316,6 +317,30 @@ Hardware validation:
 The GCC 6 candidate was SHA-256 verified and flashed on Windows using Arduino BOSSA 1.6.1. The hardware returned to normal operation, and `PROG00`/ByteBeat/SD Looper regression tests all passed. Physical manipulation of the mix control in blend mode confirmed the exact defect was cured: turning below centre correctly clamped to zero without jumping back to full-scale.
 
 **Result:** GCC 6.3.1 hardware validation PASSED. The previous validated GCC 6 development firmware (`be8505d77e295c6fd39e9c01c526748374c56b4dcdcc4414785f3f89e42cbce0`) is superseded by this fix.
+
+
+## Looper trigger-output sentinel mismatch — accepted without reflash
+
+Commit:
+
+`b3ec73b01677fc7a02bd7e512ec26777e7183c60` — `fix: use digital sentinel for Looper trigger output`
+
+In `gcc/app/src/devices/Loop.cpp`, the `Looper::create(aJsonObject* data)` factory parser incorrectly compared a `PinDigitalOut` against `ANALOG_OUT_NONE` instead of `DIGITAL_OUT_NONE`. Because both sentinel enums have an underlying value of `-1`, the check was numerically benign but semantically incorrect and generated a `-Wenum-compare` warning.
+
+The commit changed the sentinel comparison to use `DIGITAL_OUT_NONE`.
+
+Build verification:
+
+- GCC 4.8.3 post-fix firmware SHA-256:
+  `8d79e427a74f56a2bda4631f5b8f92e6f0e333534914341074e2445b4d146ce3` (196296 bytes)
+- GCC 6.3.1 post-fix firmware SHA-256:
+  `931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b` (200740 bytes)
+- The enum-compare warning was successfully removed.
+- Object-level comparison confirmed that no machine-code change resulted. Both compilers emitted the identical instructions to compare against `-1`.
+
+Hardware validation:
+
+Because the exact firmware bytes produced are identical to the previously accepted hardware-validated references, no hardware reflash was required. The GCC 6.3.1 candidate (`931c76c6c32546e132d783c6540b6ab42f34d922989b9cc42398c4ef32219d4b`) remains the active hardware-validated baseline firmware.
 
 ## Known later issues — not current work
 
