@@ -255,21 +255,9 @@ void AnalogOut::outputCV(int cv, bool softTune)
 			float alpha = (cv - bottomRange) / 1000.0;
 			float offset = ((1.0 - alpha) * b::outputOffset[this->pin][rangeIndex]) + (alpha * b::outputOffset[this->pin][rangeIndex + 1]);
 			cv = cv_old + (int)offset;
-
-			Serial.println(this->pin);
-
-			if (this->pin == 0)
-			{
-				Serial.println("---------------------------------");
-				Serial.println("alpha " + String((int)(alpha * 1000)));
-				Serial.println("bottomRange " + String(bottomRange));
-				Serial.println("start " + String(b::outputOffset[this->pin][rangeIndex]));
-				Serial.println("end " + String(b::outputOffset[this->pin][rangeIndex + 1]));
-			}
 		}
 		else
 		{
-			Serial.println("...");
 			cv = cv_old + b::outputOffset[this->pin][rangeIndex];
 		}
 
