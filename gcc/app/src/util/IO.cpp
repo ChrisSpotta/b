@@ -265,8 +265,8 @@ void AnalogOut::outputCV(int cv, bool softTune)
 	}
 
 	int dacval = b::cvGainMode ?
-		(4095 - ((cv + 10000) * 4000UL) / 20000) :
-		(4095 - ((cv +  5000) * 4000UL) / 10000);
+		(4095 - ((cv + 10000) * 4000) / 20000) :
+		(4095 - ((cv +  5000) * 4000) / 10000);
 
 
 	// int dacval = 4095 - (((cv + (b::cvGainMode ? 10000 : 5000)) * 4000UL) / 10000);
