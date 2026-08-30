@@ -109,7 +109,7 @@ AnalogOut::AnalogOut(PinAnalogOut pin)
 	//TODO: Add conditional here!
 	//this->spidac.setGain1X(this->spidac_index);						
 	//this->spidac.setGain1X(this->spidac_index);						
-	this->spidac.setGain2X_AB();						
+	this->spidac.setGain1X_AB();						
 }
 
 void AnalogOut::outputCV(int cv)
